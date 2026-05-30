@@ -1,55 +1,36 @@
 const express = require('express');
 const { spawn } = require('child_process');
-const puppeteer = require('puppeteer'); // رجعنا للعادي
+const puppeteer = require('puppeteer');
 const path = require('path');
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = 3000;
 
 const STREAM_KEY = process.env.YOUTUBE_KEY;
 const OVERLAY_URL = process.env.OVERLAY_URL;
 const VIDEO_PATH = path.join(__dirname, 'background.mp4');
 
-let browser, page, ffmpegProcess;
+let browser, ffmpeg;
 
-async function startBrowser() {
+async function start() {
   browser = await puppeteer.launch({
     headless: 'new',
-    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu']
-    // نحينا executablePath. خليه يلقى Chrome وحدو
+    args: ['--no-sandbox', '--disable-setuid-sandbox']
   });
-  page = await browser.newPage();
+  const page = await browser.newPage();
   await page.setViewport({ width: 1920, height: 1080 });
-  await page.goto(OVERLAY_URL, { waitUntil: 'networkidle0', timeout: 60000 });
-  console.log('Browser opened overlay');
-}
+  await page.goto(OVERLAY_URL);
+  console.log('Browser ready');
 
-function startFFmpeg() {
-  if (ffmpegProcess) return;
-  console.log('Starting FFmpeg stream...');
-
-  const ffmpeg = spawn('ffmpeg', [
-    '-f', 'x11grab', '-video_size', '1920x1080', '-r', '30', '-i', ':99',
+  ffmpeg = spawn('ffmpeg', [
+    '-f', 'x11grab', '-r', '30', '-s', '1920x1080', '-i', ':0',
     '-i', VIDEO_PATH,
-    '-filter_complex', '[1:v]scale=1920:1080[bg];[bg][0:v]overlay=0:0:format=auto[v]',
+    '-filter_complex', '[1:v]scale=1920:1080[bg];[bg][0:v]overlay=0:0[v]',
     '-map', '[v]', '-map', '1:a?',
-    '-c:v', 'libx264', '-preset', 'ultrafast', '-b:v', '2500k', '-maxrate', '2500k',
-    '-pix_fmt', 'yuv420p', '-g', '60',
-    '-c:a', 'aac', '-b:a', '128k', '-ar', '44100',
-    '-f', 'flv', `rtmp://a.rtmp.youtube.com/live2/${STREAM_KEY}`
+    '-c:v', 'libx264', '-preset', 'ultrafast', '-b:v', '2000k',
+    '-c:a', 'aac', '-f', 'flv', `rtmp://a.rtmp.youtube.com/live2/${STREAM_KEY}`
   ]);
-
-  ffmpeg.stderr.on('data', (data) => console.log(`FFmpeg: ${data}`));
-  ffmpeg.on('close', (code) => {
-    console.log(`FFmpeg ended: ${code}. Restarting...`);
-    ffmpegProcess = null;
-    setTimeout(startFFmpeg, 3000);
-  });
-  ffmpegProcess = ffmpeg;
+  ffmpeg.stderr.on('data', d => console.log(`FFmpeg: ${d}`));
 }
 
-app.get('/', (req, res) => res.send('ɪʈʂ ʈɑkɪ!! Stream Server Running 🔴'));
-app.listen(PORT, async () => {
-  console.log(`Server on ${PORT}`);
-  await startBrowser();
-  startFFmpeg();
-});
+app.get('/', (req, res) => res.send('Live ✅'));
+app.listen(PORT, start);
