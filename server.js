@@ -1,6 +1,6 @@
 const express = require('express');
 const { spawn } = require('child_process');
-const puppeteer = require('puppeteer-core'); // بدلناها لـ core
+const puppeteer = require('puppeteer'); // رجعنا للعادي
 const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -14,8 +14,8 @@ let browser, page, ffmpegProcess;
 async function startBrowser() {
   browser = await puppeteer.launch({
     headless: 'new',
-    executablePath: '/usr/bin/chromium', // نستعملو Chrome تاع السيرفر
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu']
+    // نحينا executablePath. خليه يلقى Chrome وحدو
   });
   page = await browser.newPage();
   await page.setViewport({ width: 1920, height: 1080 });
@@ -32,7 +32,7 @@ function startFFmpeg() {
     '-i', VIDEO_PATH,
     '-filter_complex', '[1:v]scale=1920:1080[bg];[bg][0:v]overlay=0:0:format=auto[v]',
     '-map', '[v]', '-map', '1:a?',
-    '-c:v', 'libx264', '-preset', 'ultrafast', '-b:v', '2500k', '-maxrate', '2500k', '-bufsize', '5000k',
+    '-c:v', 'libx264', '-preset', 'ultrafast', '-b:v', '2500k', '-maxrate', '2500k',
     '-pix_fmt', 'yuv420p', '-g', '60',
     '-c:a', 'aac', '-b:a', '128k', '-ar', '44100',
     '-f', 'flv', `rtmp://a.rtmp.youtube.com/live2/${STREAM_KEY}`
