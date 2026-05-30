@@ -2,6 +2,14 @@
   "name": "yt-live",
   "version": "1.0.0",
   "main": "server.js",
-  "scripts": { "start": "node server.js" },
-  "dependencies": { "express": "^4.18.2" }
+  "scripts": {
+    "start": "xvfb-run --server-args='-screen 0 1920x1080x24' node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "puppeteer": "^22.0.0"
+  },
+  "engines": {
+    "node": "18.x"
+  }
 }
